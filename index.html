@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#17152d" />
+  <title>Stella Chart — あなたの星を読む</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Serif+JP:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="stars"></div>
+  <main class="shell">
+    <header class="topbar">
+      <a class="brand" href="#top"><span class="brand-mark">✦</span><span>STELLA <em>CHART</em></span></a>
+      <nav><a href="#chart">Birth chart</a><a href="#guide">Guide</a></nav>
+    </header>
+
+    <section class="hero" id="top">
+      <div class="hero-copy">
+        <p class="eyebrow">ASTROLOGY FOR YOUR INNER SKY</p>
+        <h1>あなたの中にある、<br><i>星の地図</i>をひらく。</h1>
+        <p class="lead">生まれた瞬間の空を手がかりに、まだ言葉になっていないあなたの魅力を見つけましょう。</p>
+        <a class="scroll-link" href="#form">星の地図をつくる <span>↓</span></a>
+      </div>
+      <div class="orbit-art" aria-hidden="true"><div class="orbit orbit-1"></div><div class="orbit orbit-2"></div><div class="orbit orbit-3"></div><span class="planet p1">✦</span><span class="planet p2">☽</span><span class="planet p3">✧</span><div class="sun">☼</div></div>
+    </section>
+
+    <section class="panel form-panel" id="form">
+      <div class="section-intro"><p class="eyebrow">01 / YOUR BIRTH DATA</p><h2>生まれた日のことを<br>教えてください。</h2><p>正確な出生時刻を入れると、より細やかな読み解きができます。</p></div>
+      <form id="birth-form">
+        <label>生年月日<input id="birth-date" type="date" required /></label>
+        <label>出生時刻 <span class="optional">任意</span><input id="birth-time" type="time" value="12:00" /></label>
+        <label class="wide">出生地 <span class="optional">任意</span><input id="birth-place" type="text" placeholder="例：東京都" /></label>
+        <button type="submit">ホロスコープを読む <span>→</span></button>
+      </form>
+    </section>
+
+    <section class="panel result-panel" id="chart" hidden>
+      <div class="result-head"><div><p class="eyebrow">02 / YOUR INNER SKY</p><h2 id="result-title">あなたの出生図</h2></div><button class="reset" id="reset" type="button">もう一度入力する</button></div>
+      <div class="result-grid">
+        <div class="chart-wrap"><svg id="chart-svg" viewBox="0 0 420 420" role="img" aria-label="出生図"></svg><div class="chart-center"><span>YOUR</span><strong>SKY</strong></div></div>
+        <div class="reading"><div class="sun-card"><span class="sign-symbol" id="sign-symbol">♈</span><div><p class="eyebrow">SUN SIGN</p><h3 id="sign-name">牡羊座</h3><p id="sign-date">3/21 — 4/19</p></div></div><p id="reading-text"></p><div class="traits"><span id="trait1">情熱</span><span id="trait2">直感</span><span id="trait3">行動力</span></div></div>
+      </div>
+      <div class="note">このチャートは生年月日をもとにした簡易リーディングです。星のメッセージを、自分を見つめるきっかけとしてお楽しみください。</div>
+    </section>
+
+    <section class="guide" id="guide"><p class="eyebrow">A LITTLE GUIDE</p><h2>星は、答えではなく<br><i>問い</i>をくれる。</h2><p>ホロスコープは未来を決めるものではありません。あなたが持っている資質や、心のクセを映す鏡。気になった言葉を、今日のあなたへの小さなヒントにしてみてください。</p></section>
+    <footer><span>✦ STELLA CHART</span><span>made for curious minds</span></footer>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
