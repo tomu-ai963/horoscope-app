@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Serif+JP:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2/astronomy.browser.min.js"></script>
 </head>
 <body>
   <div class="stars"></div>
@@ -32,8 +33,9 @@
       <div class="section-intro"><p class="eyebrow">01 / YOUR BIRTH DATA</p><h2>生まれた日のことを<br>教えてください。</h2><p>正確な出生時刻を入れると、より細やかな読み解きができます。</p></div>
       <form id="birth-form">
         <label>生年月日<input id="birth-date" type="date" required /></label>
-        <label>出生時刻 <span class="optional">任意</span><input id="birth-time" type="time" value="12:00" /></label>
-        <label class="wide">出生地 <span class="optional">任意</span><input id="birth-place" type="text" placeholder="例：東京都" /></label>
+        <label>出生時刻 <span class="optional">任意・不明なら正午</span><input id="birth-time" type="time" value="12:00" /></label>
+        <label class="wide">出生地（都道府県）<select id="birth-place"></select></label>
+        <p class="wide precision-note">ハウス・アセンダントの精度は出生時刻の正確さに左右されます。</p>
         <button type="submit">ホロスコープを読む <span>→</span></button>
       </form>
     </section>
@@ -42,9 +44,19 @@
       <div class="result-head"><div><p class="eyebrow">02 / YOUR INNER SKY</p><h2 id="result-title">あなたの出生図</h2></div><button class="reset" id="reset" type="button">もう一度入力する</button></div>
       <div class="result-grid">
         <div class="chart-wrap"><svg id="chart-svg" viewBox="0 0 420 420" role="img" aria-label="出生図"></svg><div class="chart-center"><span>YOUR</span><strong>SKY</strong></div></div>
-        <div class="reading"><div class="sun-card"><span class="sign-symbol" id="sign-symbol">♈</span><div><p class="eyebrow">SUN SIGN</p><h3 id="sign-name">牡羊座</h3><p id="sign-date">3/21 — 4/19</p></div></div><p id="reading-text"></p><div class="traits"><span id="trait1">情熱</span><span id="trait2">直感</span><span id="trait3">行動力</span></div></div>
+        <div class="reading">
+          <div class="sun-card"><span class="sign-symbol" id="sign-symbol">♈</span><div><p class="eyebrow">SUN SIGN</p><h3 id="sign-name">牡羊座</h3><p id="sign-date">3/21 — 4/19</p></div></div>
+          <p id="reading-text"></p>
+          <div class="traits"><span id="trait1">情熱</span><span id="trait2">直感</span><span id="trait3">行動力</span></div>
+          <div class="sun-card"><span class="sign-symbol" id="moon-symbol">☽</span><div><p class="eyebrow">MOON SIGN</p><h3 id="moon-name"></h3><p id="moon-reading"></p></div></div>
+          <div class="sun-card"><span class="sign-symbol" id="asc-symbol">↑</span><div><p class="eyebrow">ASCENDANT</p><h3 id="asc-name"></h3><p id="asc-reading"></p></div></div>
+        </div>
       </div>
-      <div class="note">このチャートは生年月日をもとにした簡易リーディングです。星のメッセージを、自分を見つめるきっかけとしてお楽しみください。</div>
+      <div class="extra-grid">
+        <div class="houses-block"><p class="eyebrow">03 / HOUSES</p><h3>ハウス</h3><table id="houses-table"><tbody id="houses-body"></tbody></table></div>
+        <div class="aspects-block"><p class="eyebrow">04 / ASPECTS</p><h3>アスペクト</h3><ul id="aspects-body"></ul></div>
+      </div>
+      <div class="note">このチャートは生年月日・出生時刻・出生地（都道府県庁所在地の座標）をもとにした簡易リーディングです。ハウスはイコールハウス方式、アスペクトは主要5種のみを表示しています。星のメッセージを、自分を見つめるきっかけとしてお楽しみください。</div>
     </section>
 
     <section class="guide" id="guide"><p class="eyebrow">A LITTLE GUIDE</p><h2>星は、答えではなく<br><i>問い</i>をくれる。</h2><p>ホロスコープは未来を決めるものではありません。あなたが持っている資質や、心のクセを映す鏡。気になった言葉を、今日のあなたへの小さなヒントにしてみてください。</p></section>
