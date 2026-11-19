@@ -1,0 +1,2 @@
+# Cloudflare が読む _headers は改行を LF に固定する（core.autocrlf=true の checkout で CRLF にしない）
+_headers text eol=lf

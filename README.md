@@ -1,12 +1,24 @@
 # Stella Chart
 
-GitHub Pagesで公開できる、ビルド不要の静的ホロスコープWebアプリです（天体計算に[astronomy-engine](https://github.com/cosinekitty/astronomy)をCDN経由で利用しています）。
+ビルド不要の静的ホロスコープWebアプリです（天体計算に[astronomy-engine](https://github.com/cosinekitty/astronomy)をCDN経由で利用しています）。
+Cloudflare Workers の静的アセット配信で `https://stella.tomu-ai.dev` に公開します。
 
-## 公開方法
+## ローカル確認
 
-1. このフォルダの内容をGitHubリポジトリのルートへ配置します。
-2. GitHubの **Settings → Pages** を開きます。
-3. **Deploy from a branch** を選び、`main` ブランチの `/ (root)` を指定します。
+```sh
+npx wrangler dev    # http://localhost:8787（本番と同じ _headers の CSP 付き）
+```
+
+## 公開方法（Cloudflare Workers）
+
+```sh
+npx wrangler deploy
+```
+
+- `wrangler.jsonc` の `build.command` で `tools/build-site.mjs` が先に走り、公開するファイルだけを `dist/` に集めます。
+  公開するファイルを増やすときは `tools/build-site.mjs` の一覧に足してください（一覧にないファイルは配信されません）
+- セキュリティヘッダー（CSP など）は `_headers` に書きます
+- 入口は `stella.tomu-ai.dev` のカスタムドメインだけです（`workers.dev` と Preview URL は無効）
 
 ## 現在の機能
 
