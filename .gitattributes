@@ -1,2 +1,4 @@
 # Cloudflare が読む _headers は改行を LF に固定する（core.autocrlf=true の checkout で CRLF にしない）
 _headers text eol=lf
+# 同梱した外部ライブラリは配布元とハッシュで照合するので、改行を変換させない
+vendor/** -text

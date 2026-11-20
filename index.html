@@ -4,12 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#17152d" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext x=%2250%22 y=%2282%22 font-size=%2290%22 text-anchor=%22middle%22 fill=%22%23f0b66d%22%3E%E2%9C%A6%3C/text%3E%3C/svg%3E">
   <title>Stella Chart — あなたの星を読む</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Serif+JP:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2/astronomy.browser.min.js"></script>
 </head>
 <body>
   <div class="stars"></div>
@@ -32,10 +32,11 @@
     <section class="panel form-panel" id="form">
       <div class="section-intro"><p class="eyebrow">01 / YOUR BIRTH DATA</p><h2>生まれた日のことを<br>教えてください。</h2><p>正確な出生時刻を入れると、より細やかな読み解きができます。</p></div>
       <form id="birth-form">
-        <label>生年月日<input id="birth-date" type="date" required /></label>
+        <label>生年月日<input id="birth-date" type="date" min="1900-01-01" max="2100-12-31" required /></label>
         <label>出生時刻 <span class="optional">任意・不明なら正午</span><input id="birth-time" type="time" value="12:00" /></label>
         <label class="wide">出生地（都道府県）<select id="birth-place"></select></label>
         <p class="wide precision-note">ハウス・アセンダントの精度は出生時刻の正確さに左右されます。</p>
+        <p class="wide form-error" id="form-error" role="alert" hidden></p>
         <button type="submit">ホロスコープを読む <span>→</span></button>
       </form>
     </section>
@@ -53,15 +54,18 @@
         </div>
       </div>
       <div class="extra-grid">
-        <div class="houses-block"><p class="eyebrow">03 / HOUSES</p><h3>ハウス</h3><table id="houses-table"><tbody id="houses-body"></tbody></table></div>
-        <div class="aspects-block"><p class="eyebrow">04 / ASPECTS</p><h3>アスペクト</h3><ul id="aspects-body"></ul></div>
+        <div class="data-block"><p class="eyebrow">03 / PLANETS</p><h3>天体の配置</h3><table class="data-table planets-table"><tbody id="planets-body"></tbody></table></div>
+        <div class="data-block"><p class="eyebrow">04 / HOUSES</p><h3>ハウス</h3><table class="data-table houses-table"><tbody id="houses-body"></tbody></table></div>
+        <div class="data-block aspects-block"><p class="eyebrow">05 / ASPECTS</p><h3>アスペクト</h3><ul id="aspects-body"></ul></div>
       </div>
-      <div class="note">このチャートは生年月日・出生時刻・出生地（都道府県庁所在地の座標）をもとにした簡易リーディングです。ハウスはイコールハウス方式、アスペクトは主要5種のみを表示しています。星のメッセージを、自分を見つめるきっかけとしてお楽しみください。</div>
+      <div class="note">このチャートは生年月日・出生時刻・出生地（都道府県庁所在地の座標）をもとにした簡易リーディングです。ハウスはイコールハウス方式、アスペクトは主要5種のみを表示しています。出生図の「R」は逆行中の天体です。星のメッセージを、自分を見つめるきっかけとしてお楽しみください。</div>
     </section>
 
     <section class="guide" id="guide"><p class="eyebrow">A LITTLE GUIDE</p><h2>星は、答えではなく<br><i>問い</i>をくれる。</h2><p>ホロスコープは未来を決めるものではありません。あなたが持っている資質や、心のクセを映す鏡。気になった言葉を、今日のあなたへの小さなヒントにしてみてください。</p></section>
     <footer><span>✦ STELLA CHART</span><span>made for curious minds</span></footer>
   </main>
+  <script src="vendor/astronomy-engine-2.1.19/astronomy.browser.min.js"></script>
+  <script src="calc.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

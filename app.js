@@ -60,62 +60,31 @@ const PREF=[
 ];
 const TOKYO_INDEX=12;
 
+// 星座記号は Windows などで絵文字（色付きの四角）として描かれるので、文字として描くよう異体字セレクタ U+FE0E を付ける
+signs.forEach(s=>{s[1]+='\uFE0E'});
+
 const BODY_JP={
   Sun:['太陽','☉'],Moon:['月','☽'],Mercury:['水星','☿'],Venus:['金星','♀'],Mars:['火星','♂'],
   Jupiter:['木星','♃'],Saturn:['土星','♄'],Uranus:['天王星','♅'],Neptune:['海王星','♆'],Pluto:['冥王星','♇']
 };
-const OTHER_PLANETS=['Mercury','Venus','Mars','Jupiter','Saturn','Uranus','Neptune','Pluto'];
-const ASPECTS=[[0,'合','☌'],[60,'セクスタイル','⚹'],[90,'スクエア','□'],[120,'トライン','△'],[180,'オポジション','☍']];
-
-function zodiac(month,day){const d=month*100+day; if(d>=1222||d<=119)return 9;if(d<=218)return 10;if(d<=320)return 11;if(d<=419)return 0;if(d<=520)return 1;if(d<=620)return 2;if(d<=722)return 3;if(d<=822)return 4;if(d<=922)return 5;if(d<=1022)return 6;if(d<=1121)return 7;return 8}
-const signOfLongitude=elon=>Math.floor((((elon%360)+360)%360)/30);
-
-function eclipticLongitude(body,date){
-  if(body==='Sun')return Astronomy.SunPosition(date).elon;
-  if(body==='Moon')return Astronomy.EclipticGeoMoon(date).lon;
-  return Astronomy.Ecliptic(Astronomy.GeoVector(Astronomy.Body[body],date,true)).elon;
-}
-
-// RAMC/黄道傾斜角からASC・MCを算出（標準的な占星術公式）。
-// ASCは atan2 の生値だとディセンダント側になるため+180度している（日の出=ASC=太陽黄経となることで検証済み）。
-function ascMc(date,lat,lon){
-  const ramc=(Astronomy.SiderealTime(date)*15+lon+360)%360;
-  const eps=Astronomy.e_tilt(date).tobl*Math.PI/180;
-  const ramcR=ramc*Math.PI/180,latR=lat*Math.PI/180;
-  let asc=Math.atan2(-Math.cos(ramcR),Math.sin(eps)*Math.tan(latR)+Math.cos(eps)*Math.sin(ramcR))*180/Math.PI;
-  asc=(asc+180+360)%360;
-  let mc=Math.atan2(Math.sin(ramcR),Math.cos(ramcR)*Math.cos(eps))*180/Math.PI;
-  mc=(mc+360)%360;
-  return{asc,mc};
-}
-
-const computeHouses=ascDeg=>Array.from({length:12},(_,i)=>(ascDeg+i*30)%360);
-
-function computeAspects(long){
-  const names=Object.keys(long),res=[];
-  for(let i=0;i<names.length;i++)for(let j=i+1;j<names.length;j++){
-    const a=names[i],b=names[j];
-    let diff=Math.abs(long[a]-long[b])%360; if(diff>180)diff=360-diff;
-    const orbLimit=(a==='Sun'||a==='Moon'||b==='Sun'||b==='Moon')?8:5;
-    for(const[angle,name,sym]of ASPECTS){
-      const orb=Math.abs(diff-angle);
-      if(orb<=orbLimit){res.push({a,b,name,sym,angle,orb});break}
-    }
-  }
-  return res.sort((x,y)=>x.orb-y.orb);
-}
+const{BODIES,signOfLongitude,degreeInSign,jstToUtc,eclipticLongitude,isRetrograde,ascMc,computeHouses,houseOf,computeAspects,spreadGlyphs}=StellaCalc;
+const fmtDeg=elon=>degreeInSign(elon).toFixed(1)+'°';
+const signLabel=elon=>{const s=signs[signOfLongitude(elon)];return`${s[1]} ${s[0]} ${fmtDeg(elon)}`};
 
 const $=s=>document.querySelector(s);
 const form=$('#birth-form');
 const placeSelect=$('#birth-place');
+const formError=$('#form-error');
 PREF.forEach((p,i)=>{const o=document.createElement('option');o.value=i;o.textContent=p[0];placeSelect.appendChild(o)});
 placeSelect.selectedIndex=TOKYO_INDEX;
 
-function drawChart({asc,houses,longitudes}){
+const GLYPH_R=104,GLYPH_MIN_SEP=10;
+function drawChart({asc,mc,houses,longitudes,retro}){
   const svg=$('#chart-svg');svg.innerHTML='';
   const ns='http://www.w3.org/2000/svg';const cx=210,cy=210;
   const add=(tag,a)=>{const e=document.createElementNS(ns,tag);Object.entries(a).forEach(([k,v])=>e.setAttribute(k,v));svg.appendChild(e);return e};
   const toXY=(deg,r)=>{const a=(deg-90)*Math.PI/180;return[cx+r*Math.cos(a),cy+r*Math.sin(a)]};
+  const label=(deg,r,attrs,text)=>{const[x,y]=toXY(deg,r);add('text',{x,y,'text-anchor':'middle','dominant-baseline':'central',...attrs}).textContent=text};
 
   add('circle',{cx,cy,r:174,fill:'none',stroke:'#a89df3','stroke-opacity':'.6'});
   add('circle',{cx,cy,r:127,fill:'none',stroke:'#a89df3','stroke-opacity':'.35'});
@@ -124,63 +93,68 @@ function drawChart({asc,houses,longitudes}){
   for(let i=0;i<12;i++){
     const[x1,y1]=toXY(i*30,174),[x2,y2]=toXY(i*30,78);
     add('line',{x1,y1,x2,y2,stroke:'#a89df3','stroke-opacity':'.27'});
-    const[tx,ty]=toXY(i*30+15,151);
-    const t=add('text',{x:tx,y:ty+4,fill:'#aaa6bd','font-size':'17','text-anchor':'middle'});
-    t.textContent=signs[i][1];
+    label(i*30+15,151,{fill:'#aaa6bd','font-size':'17'},signs[i][1]);
   }
 
   houses.forEach((deg,i)=>{
     const[x1,y1]=toXY(deg,174),[x2,y2]=toXY(deg,60);
     add('line',{x1,y1,x2,y2,stroke:'#f0b66d','stroke-opacity':'.45','stroke-dasharray':'2,3'});
-    const[tx,ty]=toXY(deg+15,68);
-    const t=add('text',{x:tx,y:ty+3,fill:'#f0b66d','font-size':'10','text-anchor':'middle'});
-    t.textContent=i+1;
+    label(deg+15,68,{fill:'#f0b66d','font-size':'10'},i+1);
   });
 
-  const[dx1,dy1]=toXY(asc,174),[dx2,dy2]=toXY(asc+180,174);
-  add('line',{x1:dx1,y1:dy1,x2:dx2,y2:dy2,stroke:'#f0b66d','stroke-width':'1.5'});
-  const[alx,aly]=toXY(asc,190);
-  add('text',{x:alx,y:aly+4,fill:'#f0b66d','font-size':'11','text-anchor':'middle'}).textContent='AS';
+  // ASC-DSC 軸と MC-IC 軸
+  [[asc,'AS','1.5','1'],[mc,'MC','1','.6']].forEach(([deg,text,width,opacity])=>{
+    const[x1,y1]=toXY(deg,174),[x2,y2]=toXY(deg+180,174);
+    add('line',{x1,y1,x2,y2,stroke:'#f0b66d','stroke-width':width,'stroke-opacity':opacity});
+    label(deg,190,{fill:'#f0b66d','font-size':'11'},text);
+  });
 
-  Object.entries(longitudes).forEach(([name,deg],i)=>{
-    const r=95+(i%3)*20;
-    const[x,y]=toXY(deg,r);
-    const isLum=name==='Sun'||name==='Moon';
-    add('text',{x,y:y+6,fill:isLum?'#f0b66d':'#f5f1e8','font-size':isLum?'20':'15','text-anchor':'middle'}).textContent=BODY_JP[name][1];
+  // 天体: 実際の黄経に目盛りを打ち、記号は重ならない角度に置いて引き出し線でつなぐ
+  const shown=spreadGlyphs(longitudes,GLYPH_MIN_SEP);
+  Object.entries(longitudes).forEach(([name,deg])=>{
+    const pos=shown[name],isLum=name==='Sun'||name==='Moon';
+    const color=isLum?'#f0b66d':'#f5f1e8';
+    const[t1x,t1y]=toXY(deg,127),[t2x,t2y]=toXY(deg,120);
+    add('line',{x1:t1x,y1:t1y,x2:t2x,y2:t2y,stroke:color,'stroke-width':'1.5'});
+    const[lx,ly]=toXY(pos,GLYPH_R+(isLum?11:9));
+    add('line',{x1:t2x,y1:t2y,x2:lx,y2:ly,stroke:color,'stroke-opacity':'.4'});
+    label(pos,GLYPH_R,{fill:color,'font-size':isLum?'20':'15'},BODY_JP[name][1]);
+    if(retro[name])label(pos,GLYPH_R-15,{fill:'#aaa6bd','font-size':'8'},'R');
   });
 }
 
-form.addEventListener('submit',e=>{
-  e.preventDefault();
-  const dateVal=$('#birth-date').value; if(!dateVal)return;
-  const[y,mo,da]=dateVal.split('-').map(Number);
-  const[hh,mm]=($('#birth-time').value||'12:00').split(':').map(Number);
-  const[prefName,lat,lon]=PREF[Number(placeSelect.value)];
-  const utcDate=new Date(Date.UTC(y,mo-1,da,hh-9,mm));
+function addRow(tbody,cells){
+  const tr=document.createElement('tr');
+  cells.forEach(c=>{const td=document.createElement('td');td.textContent=c;tr.appendChild(td)});
+  tbody.appendChild(tr);
+}
 
-  const idx=zodiac(mo,da),s=signs[idx];
-  $('#sign-symbol').textContent=s[1];$('#sign-name').textContent=s[0];$('#sign-date').textContent=s[2];
+function render({prefName,lat,lon,utcDate}){
+  const longitudes={},retro={};
+  BODIES.forEach(b=>{longitudes[b]=eclipticLongitude(b,utcDate);retro[b]=isRetrograde(b,utcDate)});
+  const{asc,mc}=ascMc(utcDate,lat,lon);
+
+  // 太陽星座も月・ASCと同じく実際の黄経で決める（固定の日付表は目安として表示だけする）
+  const s=signs[signOfLongitude(longitudes.Sun)];
+  $('#sign-symbol').textContent=s[1];$('#sign-name').textContent=s[0];
+  $('#sign-date').textContent=`太陽の位置 ${fmtDeg(longitudes.Sun)}・例年 ${s[2]} ごろ`;
   $('#reading-text').textContent=s[6];
   ['trait1','trait2','trait3'].forEach((id,i)=>$('#'+id).textContent=s[3+i]);
-
-  const longitudes={Sun:eclipticLongitude('Sun',utcDate),Moon:eclipticLongitude('Moon',utcDate)};
-  OTHER_PLANETS.forEach(b=>longitudes[b]=eclipticLongitude(b,utcDate));
 
   const moonIdx=signOfLongitude(longitudes.Moon);
   $('#moon-symbol').textContent=signs[moonIdx][1];$('#moon-name').textContent=signs[moonIdx][0];$('#moon-reading').textContent=moonReadings[moonIdx];
 
-  const{asc}=ascMc(utcDate,lat,lon);
   const ascIdx=signOfLongitude(asc);
   $('#asc-symbol').textContent=signs[ascIdx][1];$('#asc-name').textContent=signs[ascIdx][0];$('#asc-reading').textContent=ascReadings[ascIdx];
 
+  const planetsBody=$('#planets-body');planetsBody.innerHTML='';
+  BODIES.forEach(b=>addRow(planetsBody,[`${BODY_JP[b][1]} ${BODY_JP[b][0]}`,signLabel(longitudes[b]),`${houseOf(longitudes[b],asc)}室`,retro[b]?'逆行':'']));
+  addRow(planetsBody,['AS アセンダント',signLabel(asc),'1室','']);
+  addRow(planetsBody,['MC 天頂',signLabel(mc),`${houseOf(mc,asc)}室`,'']);
+
   const houses=computeHouses(asc);
   const housesBody=$('#houses-body');housesBody.innerHTML='';
-  houses.forEach((deg,i)=>{
-    const si=signOfLongitude(deg),degIn=(((deg%360)+360)%360)%30;
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${i+1}</td><td>${signs[si][1]} ${signs[si][0]} ${degIn.toFixed(1)}°</td>`;
-    housesBody.appendChild(tr);
-  });
+  houses.forEach((deg,i)=>addRow(housesBody,[String(i+1),signLabel(deg)]));
 
   const aspects=computeAspects(longitudes);
   const aspectsBody=$('#aspects-body');aspectsBody.innerHTML='';
@@ -189,13 +163,33 @@ form.addEventListener('submit',e=>{
   }else{
     aspects.forEach(asp=>{
       const li=document.createElement('li');
-      li.innerHTML=`${BODY_JP[asp.a][1]} ${BODY_JP[asp.a][0]} <span class="aspect-sym">${asp.sym}</span> ${BODY_JP[asp.b][1]} ${BODY_JP[asp.b][0]} <em>${asp.name}・オーブ${asp.orb.toFixed(1)}°</em>`;
+      const sym=document.createElement('span');sym.className='aspect-sym';sym.textContent=asp.sym;
+      const em=document.createElement('em');em.textContent=`${asp.name}・オーブ${asp.orb.toFixed(1)}°`;
+      li.append(`${BODY_JP[asp.a][1]} ${BODY_JP[asp.a][0]} `,sym,` ${BODY_JP[asp.b][1]} ${BODY_JP[asp.b][0]} `,em);
       aspectsBody.appendChild(li);
     });
   }
 
   $('#result-title').textContent=prefName+'生まれの出生図';
-  drawChart({asc,houses,longitudes});
+  drawChart({asc,mc,houses,longitudes,retro});
+}
+
+form.addEventListener('submit',e=>{
+  e.preventDefault();
+  formError.hidden=true;
+  const dateVal=$('#birth-date').value; if(!dateVal)return;
+  const[y,mo,da]=dateVal.split('-').map(Number);
+  const[hh,mm]=($('#birth-time').value||'12:00').split(':').map(Number);
+  const[prefName,lat,lon]=PREF[Number(placeSelect.value)];
+  try{
+    if(typeof Astronomy==='undefined')throw new Error('astronomy-engine が読み込まれていません');
+    render({prefName,lat,lon,utcDate:jstToUtc(y,mo,da,hh,mm)});
+  }catch(err){
+    console.error(err);
+    formError.textContent='星の位置を計算できませんでした。ページを再読み込みしてもう一度お試しください。';
+    formError.hidden=false;
+    return;
+  }
   $('#chart').hidden=false;
   $('#chart').scrollIntoView({behavior:'smooth',block:'start'});
 });
