@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const DIST = join(ROOT, 'dist');
-const PUBLIC_FILES = ['index.html', 'app.js', 'style.css', '_headers'];
+const PUBLIC_FILES = ['index.html', 'calc.js', 'app.js', 'style.css', '_headers', 'vendor'];
 
 await rm(DIST, { recursive: true, force: true });
 await mkdir(DIST, { recursive: true });

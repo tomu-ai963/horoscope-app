@@ -1,8 +1,9 @@
 # すべてのページに付けるセキュリティヘッダー（Cloudflare Workers の静的アセット配信が読む）
-# スクリプトは app.js と、天体計算の astronomy-engine（jsDelivr）だけ。外部から読むのは Google Fonts（CSS と字形ファイル）だけ。
+# スクリプトはこのサイト自身のファイルだけ（天体計算の astronomy-engine も vendor/ に同梱して自前で配信する）。
+# 外部から読むのは Google Fonts（CSS と字形ファイル）だけ。
 # 入力は送信せずブラウザ内で計算するので、通信先はこのサイト自身だけ。
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
