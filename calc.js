@@ -95,5 +95,33 @@ const StellaCalc=(()=>{
     return out;
   }
 
-  return{BODIES,ASPECTS,norm360,signOfLongitude,degreeInSign,jstToUtc,eclipticLongitude,isRetrograde,ascMc,computeHouses,houseOf,computeAspects,spreadGlyphs};
+  // 出生図の座標（SVG、中心 210,210）。rot の黄経を左（9 時の位置）に置き、黄経が増える向きに反時計回りで並べる。
+  // 時刻が分かれば rot=ASC（一般的な出生図の向き）、分からなければ rot=0（牡羊座 0 度が左）
+  function chartPoint(deg,r,rot){
+    const a=(180+deg-rot)*Math.PI/180;
+    return[210+r*Math.cos(a),210-r*Math.sin(a)];
+  }
+
+  // 共有 URL のハッシュ（#d=1990-01-20&t=09:30&p=12）。t がなければ出生時刻不明。
+  // ハッシュはサーバーへ送られず Referer にも載らないので、生年月日はブラウザの外に出ない
+  function formatShare({date,time,place}){
+    const q=new URLSearchParams({d:date});
+    if(time)q.set('t',time);
+    q.set('p',String(place));
+    return q.toString();
+  }
+  // 手で書き換えられた URL も来るので、形と範囲を確かめて、だめなら null を返す
+  function parseShare(str,placeCount){
+    const q=new URLSearchParams(str);
+    const d=q.get('d'),t=q.get('t'),p=q.get('p');
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(d||'')||d<'1900-01-01'||d>'2100-12-31')return null;
+    const[y,mo,da]=d.split('-').map(Number);
+    const check=new Date(0);check.setUTCFullYear(y,mo-1,da);
+    if(check.getUTCMonth()!==mo-1||check.getUTCDate()!==da)return null;
+    if(t!==null&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(t))return null;
+    if(!/^\d{1,3}$/.test(p||'')||Number(p)>=placeCount)return null;
+    return{date:d,time:t,place:Number(p)};
+  }
+
+  return{BODIES,ASPECTS,norm360,signOfLongitude,degreeInSign,jstToUtc,eclipticLongitude,isRetrograde,ascMc,computeHouses,houseOf,computeAspects,spreadGlyphs,chartPoint,formatShare,parseShare};
 })();

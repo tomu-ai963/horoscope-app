@@ -67,23 +67,29 @@ const BODY_JP={
   Sun:['太陽','☉'],Moon:['月','☽'],Mercury:['水星','☿'],Venus:['金星','♀'],Mars:['火星','♂'],
   Jupiter:['木星','♃'],Saturn:['土星','♄'],Uranus:['天王星','♅'],Neptune:['海王星','♆'],Pluto:['冥王星','♇']
 };
-const{BODIES,signOfLongitude,degreeInSign,jstToUtc,eclipticLongitude,isRetrograde,ascMc,computeHouses,houseOf,computeAspects,spreadGlyphs}=StellaCalc;
+const{BODIES,signOfLongitude,degreeInSign,jstToUtc,eclipticLongitude,isRetrograde,ascMc,computeHouses,houseOf,computeAspects,spreadGlyphs,chartPoint,formatShare,parseShare}=StellaCalc;
 const fmtDeg=elon=>degreeInSign(elon).toFixed(1)+'°';
 const signLabel=elon=>{const s=signs[signOfLongitude(elon)];return`${s[1]} ${s[0]} ${fmtDeg(elon)}`};
 
 const $=s=>document.querySelector(s);
 const form=$('#birth-form');
+const dateInput=$('#birth-date');
+const timeInput=$('#birth-time');
+const timeUnknown=$('#time-unknown');
 const placeSelect=$('#birth-place');
 const formError=$('#form-error');
+const shareStatus=$('#share-status');
 PREF.forEach((p,i)=>{const o=document.createElement('option');o.value=i;o.textContent=p[0];placeSelect.appendChild(o)});
 placeSelect.selectedIndex=TOKYO_INDEX;
+timeUnknown.addEventListener('change',()=>{timeInput.disabled=timeUnknown.checked});
 
 const GLYPH_R=104,GLYPH_MIN_SEP=10;
-function drawChart({asc,mc,houses,longitudes,retro}){
+function drawChart({asc,mc,houses,longitudes,retro,timeKnown}){
   const svg=$('#chart-svg');svg.innerHTML='';
   const ns='http://www.w3.org/2000/svg';const cx=210,cy=210;
+  const rot=timeKnown?asc:0;
   const add=(tag,a)=>{const e=document.createElementNS(ns,tag);Object.entries(a).forEach(([k,v])=>e.setAttribute(k,v));svg.appendChild(e);return e};
-  const toXY=(deg,r)=>{const a=(deg-90)*Math.PI/180;return[cx+r*Math.cos(a),cy+r*Math.sin(a)]};
+  const toXY=(deg,r)=>chartPoint(deg,r,rot);
   const label=(deg,r,attrs,text)=>{const[x,y]=toXY(deg,r);add('text',{x,y,'text-anchor':'middle','dominant-baseline':'central',...attrs}).textContent=text};
 
   add('circle',{cx,cy,r:174,fill:'none',stroke:'#a89df3','stroke-opacity':'.6'});
@@ -96,18 +102,19 @@ function drawChart({asc,mc,houses,longitudes,retro}){
     label(i*30+15,151,{fill:'#aaa6bd','font-size':'17'},signs[i][1]);
   }
 
-  houses.forEach((deg,i)=>{
-    const[x1,y1]=toXY(deg,174),[x2,y2]=toXY(deg,60);
-    add('line',{x1,y1,x2,y2,stroke:'#f0b66d','stroke-opacity':'.45','stroke-dasharray':'2,3'});
-    label(deg+15,68,{fill:'#f0b66d','font-size':'10'},i+1);
-  });
-
-  // ASC-DSC 軸と MC-IC 軸
-  [[asc,'AS','1.5','1'],[mc,'MC','1','.6']].forEach(([deg,text,width,opacity])=>{
-    const[x1,y1]=toXY(deg,174),[x2,y2]=toXY(deg+180,174);
-    add('line',{x1,y1,x2,y2,stroke:'#f0b66d','stroke-width':width,'stroke-opacity':opacity});
-    label(deg,190,{fill:'#f0b66d','font-size':'11'},text);
-  });
+  // ハウスと ASC・MC は出生時刻が分かるときだけ描く
+  if(timeKnown){
+    houses.forEach((deg,i)=>{
+      const[x1,y1]=toXY(deg,174),[x2,y2]=toXY(deg,60);
+      add('line',{x1,y1,x2,y2,stroke:'#f0b66d','stroke-opacity':'.45','stroke-dasharray':'2,3'});
+      label(deg+15,68,{fill:'#f0b66d','font-size':'10'},i+1);
+    });
+    [[asc,'AS','1.5','1'],[mc,'MC','1','.6']].forEach(([deg,text,width,opacity])=>{
+      const[x1,y1]=toXY(deg,174),[x2,y2]=toXY(deg+180,174);
+      add('line',{x1,y1,x2,y2,stroke:'#f0b66d','stroke-width':width,'stroke-opacity':opacity});
+      label(deg,190,{fill:'#f0b66d','font-size':'11'},text);
+    });
+  }
 
   // 天体: 実際の黄経に目盛りを打ち、記号は重ならない角度に置いて引き出し線でつなぐ
   const shown=spreadGlyphs(longitudes,GLYPH_MIN_SEP);
@@ -129,7 +136,17 @@ function addRow(tbody,cells){
   tbody.appendChild(tr);
 }
 
-function render({prefName,lat,lon,utcDate}){
+// 出生時刻が不明なときに、その日のうち（0:00〜23:59 JST）に星座が変わる天体を挙げる
+function signChangesDuringDay(y,mo,da){
+  const start=jstToUtc(y,mo,da,0,0),end=jstToUtc(y,mo,da,23,59);
+  return['Sun','Moon'].flatMap(b=>{
+    const a=signOfLongitude(eclipticLongitude(b,start)),z=signOfLongitude(eclipticLongitude(b,end));
+    return a===z?[]:[`${BODY_JP[b][0]}はこの日のうちに${signs[a][0]}から${signs[z][0]}へ移ります。`];
+  });
+}
+
+function render({prefName,lat,lon,y,mo,da,hh,mm,timeKnown}){
+  const utcDate=jstToUtc(y,mo,da,hh,mm);
   const longitudes={},retro={};
   BODIES.forEach(b=>{longitudes[b]=eclipticLongitude(b,utcDate);retro[b]=isRetrograde(b,utcDate)});
   const{asc,mc}=ascMc(utcDate,lat,lon);
@@ -146,11 +163,19 @@ function render({prefName,lat,lon,utcDate}){
 
   const ascIdx=signOfLongitude(asc);
   $('#asc-symbol').textContent=signs[ascIdx][1];$('#asc-name').textContent=signs[ascIdx][0];$('#asc-reading').textContent=ascReadings[ascIdx];
+  $('#asc-card').hidden=!timeKnown;
+  $('#houses-block').hidden=!timeKnown;
+
+  const timeNote=$('#time-note');
+  timeNote.textContent=timeKnown?'':['出生時刻が分からないため、正午の星の位置で読んでいます。アセンダントとハウスは表示していません。',...signChangesDuringDay(y,mo,da)].join('');
+  timeNote.hidden=timeKnown;
 
   const planetsBody=$('#planets-body');planetsBody.innerHTML='';
-  BODIES.forEach(b=>addRow(planetsBody,[`${BODY_JP[b][1]} ${BODY_JP[b][0]}`,signLabel(longitudes[b]),`${houseOf(longitudes[b],asc)}室`,retro[b]?'逆行':'']));
-  addRow(planetsBody,['AS アセンダント',signLabel(asc),'1室','']);
-  addRow(planetsBody,['MC 天頂',signLabel(mc),`${houseOf(mc,asc)}室`,'']);
+  BODIES.forEach(b=>addRow(planetsBody,[`${BODY_JP[b][1]} ${BODY_JP[b][0]}`,signLabel(longitudes[b]),timeKnown?`${houseOf(longitudes[b],asc)}室`:'',retro[b]?'逆行':'']));
+  if(timeKnown){
+    addRow(planetsBody,['AS アセンダント',signLabel(asc),'1室','']);
+    addRow(planetsBody,['MC 天頂',signLabel(mc),`${houseOf(mc,asc)}室`,'']);
+  }
 
   const houses=computeHouses(asc);
   const housesBody=$('#houses-body');housesBody.innerHTML='';
@@ -171,26 +196,61 @@ function render({prefName,lat,lon,utcDate}){
   }
 
   $('#result-title').textContent=prefName+'生まれの出生図';
-  drawChart({asc,mc,houses,longitudes,retro});
+  drawChart({asc,mc,houses,longitudes,retro,timeKnown});
 }
 
-form.addEventListener('submit',e=>{
-  e.preventDefault();
-  formError.hidden=true;
-  const dateVal=$('#birth-date').value; if(!dateVal)return;
-  const[y,mo,da]=dateVal.split('-').map(Number);
-  const[hh,mm]=($('#birth-time').value||'12:00').split(':').map(Number);
-  const[prefName,lat,lon]=PREF[Number(placeSelect.value)];
+// フォームの値でチャートを出し、URL のハッシュを結果に合わせる（共有用）
+function showChart(){
+  formError.hidden=true;shareStatus.textContent='';
+  const date=dateInput.value; if(!date)return false;
+  const[y,mo,da]=date.split('-').map(Number);
+  const timeKnown=!timeUnknown.checked;
+  const time=timeKnown&&timeInput.value?timeInput.value:'12:00';
+  const[hh,mm]=time.split(':').map(Number);
+  const place=Number(placeSelect.value);
+  const[prefName,lat,lon]=PREF[place];
   try{
     if(typeof Astronomy==='undefined')throw new Error('astronomy-engine が読み込まれていません');
-    render({prefName,lat,lon,utcDate:jstToUtc(y,mo,da,hh,mm)});
+    render({prefName,lat,lon,y,mo,da,hh,mm,timeKnown});
   }catch(err){
     console.error(err);
     formError.textContent='星の位置を計算できませんでした。ページを再読み込みしてもう一度お試しください。';
     formError.hidden=false;
-    return;
+    return false;
   }
+  history.replaceState(null,'','#'+formatShare({date,time:timeKnown?time:null,place}));
   $('#chart').hidden=false;
-  $('#chart').scrollIntoView({behavior:'smooth',block:'start'});
+  return true;
+}
+
+form.addEventListener('submit',e=>{
+  e.preventDefault();
+  if(showChart())$('#chart').scrollIntoView({behavior:'smooth',block:'start'});
 });
-$('#reset').addEventListener('click',()=>{$('#chart').hidden=true;$('#form').scrollIntoView({behavior:'smooth'})});
+$('#reset').addEventListener('click',()=>{
+  $('#chart').hidden=true;
+  history.replaceState(null,'',location.pathname+location.search);
+  $('#form').scrollIntoView({behavior:'smooth'});
+});
+$('#share').addEventListener('click',async()=>{
+  try{
+    await navigator.clipboard.writeText(location.href);
+    shareStatus.textContent='URL をコピーしました（生年月日・出生時刻・出生地が含まれます）';
+  }catch{
+    shareStatus.textContent='コピーできませんでした。アドレスバーの URL をそのまま共有できます';
+  }
+});
+
+// 共有 URL から開いたとき（とアドレスバーでハッシュを書き換えたとき）は、ハッシュの内容でフォームを埋めてチャートを出す
+function loadFromHash(){
+  const shared=parseShare(location.hash.slice(1),PREF.length);
+  if(!shared)return;
+  dateInput.value=shared.date;
+  timeUnknown.checked=shared.time===null;
+  timeInput.disabled=timeUnknown.checked;
+  if(shared.time)timeInput.value=shared.time;
+  placeSelect.value=String(shared.place);
+  if(showChart())$('#chart').scrollIntoView({block:'start'});
+}
+window.addEventListener('hashchange',loadFromHash);
+loadFromHash();

@@ -12,7 +12,8 @@ const VENDOR = 'vendor/astronomy-engine-2.1.19/astronomy.browser.min.js';
 // npm の astronomy-engine@2.1.19（tarball の integrity を npm が検証）と jsDelivr の配布物で同じ値
 const VENDOR_SHA256 = 'f41139a87941ea017ab902b954c9389fa27ea72083d7fab4971756d7769d14e6';
 
-const ctx = vm.createContext({});
+// URLSearchParams は JavaScript 本体ではなくブラウザの API なので、Node のものを渡す
+const ctx = vm.createContext({ URLSearchParams });
 for (const file of [VENDOR, 'calc.js']) {
   vm.runInContext(readFileSync(root + file, 'utf8'), ctx, { filename: file });
 }
@@ -124,4 +125,26 @@ test('spreadGlyphs: 1960〜2009 年の毎週の実際の配置で、重なりが
   assert.equal(charts, 2609);
   assert.ok(worst <= 45, `最大のずらし幅 ${worst}`);
   console.log(`  ${charts} 件・記号の最大のずらし幅 ${worst.toFixed(1)}°`);
+});
+
+test('chartPoint: ASC が左、MC が上、黄経が増えると反時計回り', () => {
+  const near = ([x, y], [ex, ey]) => Math.abs(x - ex) < 1e-9 && Math.abs(y - ey) < 1e-9;
+  const asc = 123;
+  assert.ok(near(C.chartPoint(asc, 100, asc), [110, 210]), 'ASC は左');
+  assert.ok(near(C.chartPoint(asc + 90, 100, asc), [210, 310]), 'ASC+90（IC 側）は下');
+  assert.ok(near(C.chartPoint(asc + 180, 100, asc), [310, 210]), 'DSC は右');
+  assert.ok(near(C.chartPoint(asc - 90, 100, asc), [210, 110]), 'ASC-90（MC 側）は上');
+  // 実際の ASC/MC でも MC は上半分に来る
+  const { asc: a, mc } = C.ascMc(at('2024-04-15T03:00:00Z'), ...TOKYO);
+  assert.ok(C.chartPoint(mc, 100, a)[1] < 210);
+});
+
+test('formatShare / parseShare: 往復と不正な値の拒否', () => {
+  const s = C.formatShare({ date: '1990-01-20', time: '09:30', place: 12 });
+  assert.deepEqual({ ...C.parseShare(s, 47) }, { date: '1990-01-20', time: '09:30', place: 12 });
+  assert.deepEqual({ ...C.parseShare(C.formatShare({ date: '1990-01-20', time: null, place: 0 }), 47) }, { date: '1990-01-20', time: null, place: 0 });
+  for (const bad of ['', 'd=1990-01-20', 'd=1990-02-30&p=1', 'd=1899-12-31&p=1', 'd=2101-01-01&p=1', 'd=1990-01-20&p=47',
+    'd=1990-01-20&p=-1', 'd=1990-01-20&p=1.5', 'd=1990-01-20&t=24:00&p=1', 'd=1990-01-20&t=9:30&p=1', 'd=<script>&p=1']) {
+    assert.equal(C.parseShare(bad, 47), null, bad);
+  }
 });
